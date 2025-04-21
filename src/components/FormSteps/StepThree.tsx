@@ -24,7 +24,7 @@ const StepThree = () => {
   // Toggle category selection
   const toggleCategory = (categoryId: string) => {
     const updatedCategories = selectedCategories.includes(categoryId)
-      ? selectedCategories.filter((id) => id !== categoryId)
+      ? selectedCategories.filter((id: string) => id !== categoryId)
       : [...selectedCategories, categoryId];
 
     setValue("categories", updatedCategories, {
