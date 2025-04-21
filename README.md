@@ -42,7 +42,7 @@ A responsive multi-step form built with React, TypeScript, and Tailwind CSS.
   - `FormInput.tsx` - Reusable input component
   - `steps/` - Individual form steps
   - `SubmissionsList.tsx` - Display of submitted entries
-- `src/types.ts` - TypeScript interfaces
+- `src/types/index.ts` - TypeScript interfaces
 
 ## Assumptions and Design Decisions
 
