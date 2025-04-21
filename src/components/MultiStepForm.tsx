@@ -1,180 +1,143 @@
+"use client";
+
 import { useState, useEffect } from "react";
-import Step1 from "./FormSteps/Step1";
-import Step2 from "./FormSteps/Step2";
-import Step3 from "./FormSteps/Step3";
-import Step4 from "./FormSteps/Step4";
-import type { FormData, FormErrors } from "../types";
-import { validateStep } from "../utils/validation";
+import { useForm, FormProvider } from "react-hook-form";
+import type { FormData } from "../types";
+
+import FormNavigation from "./FormNavigation";
+import FormProgress from "./FormProgress";
+import StepOne from "./FormSteps/StepOne";
+import StepTwo from "./FormSteps/StepTwo";
+import StepThree from "./FormSteps/StepThree";
+import ReviewStep from "./FormSteps/ReviewStep";
 
 interface MultiStepFormProps {
   onSubmit: (data: FormData) => void;
 }
 
 const MultiStepForm = ({ onSubmit }: MultiStepFormProps) => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState<FormData>({
-    name: "",
-    email: "",
-    address: "",
-    phone: "",
-    categories: [],
+  // Current step state
+  const [currentStep, setCurrentStep] = useState(0);
+
+  // Initialize React Hook Form
+  const methods = useForm<FormData>({
+    mode: "onChange",
+    defaultValues: {
+      name: "",
+      email: "",
+      address: "",
+      phone: "",
+      categories: [],
+    },
   });
-  const [errors, setErrors] = useState<FormErrors>({});
 
-  // Load form data from localStorage on initial render
+  // Load saved form data from localStorage on component mount
   useEffect(() => {
-    const savedFormData = localStorage.getItem("formData");
+    const savedFormData = localStorage.getItem("formProgress");
     if (savedFormData) {
-      setFormData(JSON.parse(savedFormData));
-    }
-  }, []);
+      const parsedData = JSON.parse(savedFormData);
+      methods.reset(parsedData);
 
-  // Save form data to localStorage whenever it changes
+      // If we have data for later steps, we can assume the user was on a later step
+      if (parsedData.address) setCurrentStep(1);
+      if (parsedData.categories && parsedData.categories.length > 0)
+        setCurrentStep(2);
+    }
+  }, [methods]);
+
+  // Save form progress to localStorage whenever form values change
   useEffect(() => {
-    localStorage.setItem("formData", JSON.stringify(formData));
-  }, [formData]);
+    const subscription = methods.watch((formValues) => {
+      if (Object.keys(formValues).length > 0) {
+        localStorage.setItem("formProgress", JSON.stringify(formValues));
+      }
+    });
 
-  const updateFormData = (newData: Partial<FormData>) => {
-    setFormData((prev) => ({ ...prev, ...newData }));
-  };
+    return () => subscription.unsubscribe();
+  }, [methods]);
 
-  const handleNext = () => {
-    const stepErrors = validateStep(currentStep, formData);
+  // Form steps components
+  const steps = [
+    <StepOne key="step1" />,
+    <StepTwo key="step2" />,
+    <StepThree key="step3" />,
+    <ReviewStep key="review" />,
+  ];
 
-    if (Object.keys(stepErrors).length === 0) {
-      setErrors({});
-      setCurrentStep((prev) => prev + 1);
-    } else {
-      setErrors(stepErrors);
+  // Handle next step navigation
+  const handleNext = async () => {
+    // For steps 0, 1, 2 (not the final review step)
+    if (currentStep < steps.length - 1) {
+      // Validate the current step's fields before proceeding
+      let isValid = false;
+
+      if (currentStep === 0) {
+        // Validate step 1 fields
+        isValid = await methods.trigger(["name", "email"]);
+      } else if (currentStep === 1) {
+        // Validate step 2 fields
+        isValid = await methods.trigger(["address", "phone"]);
+      } else if (currentStep === 2) {
+        // Validate step 3 fields
+        isValid = await methods.trigger(["categories"]);
+      }
+
+      if (isValid) {
+        setCurrentStep(currentStep + 1);
+      }
     }
   };
 
+  // Handle previous step navigation
   const handlePrevious = () => {
-    setCurrentStep((prev) => prev - 1);
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
-  const handleSubmit = () => {
-    onSubmit(formData);
+  // Handle form submission
+  const handleFormSubmit = methods.handleSubmit((data) => {
+    onSubmit(data);
+    methods.reset();
+    setCurrentStep(0);
+    // Clear form progress from localStorage
+    localStorage.removeItem("formProgress");
+  });
 
-    // Reset form after submission
-    setFormData({
-      name: "",
-      email: "",
-      address: "",
-      phone: "",
-      categories: [],
-    });
-    setCurrentStep(1);
-  };
-
+  // Handle form reset
   const handleReset = () => {
-    // Clear form data
-    setFormData({
-      name: "",
-      email: "",
-      address: "",
-      phone: "",
-      categories: [],
-    });
-
-    // Reset to first step
-    setCurrentStep(1);
-
-    // Clear errors
-    setErrors({});
-
-    // Remove from localStorage
-    localStorage.removeItem("formData");
+    if (
+      window.confirm(
+        "Are you sure you want to reset the form? All progress will be lost."
+      )
+    ) {
+      methods.reset();
+      setCurrentStep(0);
+      localStorage.removeItem("formProgress");
+    }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="mb-6">
-        <div className="flex justify-between mb-2">
-          {[1, 2, 3, 4].map((step) => (
-            <div
-              key={step}
-              className={`w-1/4 text-center ${
-                currentStep === step
-                  ? "text-emerald-600 font-bold"
-                  : currentStep > step
-                  ? "text-emerald-400"
-                  : "text-gray-400"
-              }`}
-            >
-              Step {step}
-            </div>
-          ))}
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div
-            className="bg-emerald-500 h-2.5 rounded-full transition-all duration-300"
-            style={{ width: `${(currentStep / 4) * 100}%` }}
-          ></div>
-        </div>
-      </div>
+    <div className="bg-white rounded-lg shadow-xl overflow-hidden">
+      {/* Form progress indicator */}
+      <FormProgress currentStep={currentStep} totalSteps={steps.length} />
 
-      <div className="mb-6">
-        {currentStep === 1 && (
-          <Step1
-            formData={formData}
-            updateFormData={updateFormData}
-            errors={errors}
-          />
-        )}
-        {currentStep === 2 && (
-          <Step2
-            formData={formData}
-            updateFormData={updateFormData}
-            errors={errors}
-          />
-        )}
-        {currentStep === 3 && (
-          <Step3
-            formData={formData}
-            updateFormData={updateFormData}
-            errors={errors}
-          />
-        )}
-        {currentStep === 4 && <Step4 formData={formData} />}
-      </div>
+      {/* Form provider from react-hook-form */}
+      <FormProvider {...methods}>
+        <form onSubmit={handleFormSubmit} className="p-6 sm:p-8">
+          {/* Current step content */}
+          <div className="mb-8">{steps[currentStep]}</div>
 
-      <div className="flex justify-between">
-        <div>
-          {currentStep > 1 && (
-            <button
-              onClick={handlePrevious}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition"
-            >
-              Previous
-            </button>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleReset}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
-          >
-            Reset
-          </button>
-
-          {currentStep < 4 ? (
-            <button
-              onClick={handleNext}
-              className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition"
-            >
-              Next
-            </button>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition"
-            >
-              Submit
-            </button>
-          )}
-        </div>
-      </div>
+          {/* Form navigation buttons */}
+          <FormNavigation
+            currentStep={currentStep}
+            totalSteps={steps.length}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+            onReset={handleReset}
+          />
+        </form>
+      </FormProvider>
     </div>
   );
 };
