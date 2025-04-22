@@ -46,7 +46,7 @@ const FormNavigation = ({
 
       <div>
         {/* Next or Submit button */}
-        {isLastStep ? (
+        {/* {isLastStep ? (
           <button
             type="submit"
             className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-blue-600 rounded-md shadow-sm hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
@@ -54,6 +54,25 @@ const FormNavigation = ({
             Submit
           </button>
         ) : (
+          <button
+            type="button"
+            onClick={onNext}
+            disabled={!formState.isValid}
+            className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-blue-600 rounded-md shadow-sm hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        )} */}
+
+        {isLastStep && (
+          <button
+            type="submit"
+            className="px-6 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-blue-600 rounded-md shadow-sm hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+          >
+            Submit
+          </button>
+        )}
+        {!isLastStep && (
           <button
             type="button"
             onClick={onNext}
